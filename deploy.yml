@@ -1,54 +1,16 @@
 ---
-  - name: System prepare
+  - name: Deploy services
     hosts: all
     become: yes
-    become_user: root
+    become_user: docker
     tasks:
-      - name: Test vagrant connection
-        ansible.builtin.ping:
-      - name: Upgrade system packets
-        ansible.builtin.yum:
-          name: "*"
-          state: latest
-        ansible.builtin.yum:
-          name: yum-utils
-          state: present
-#      - name: Reboot the machine to apply changes
-#        ansible.builtin.reboot:
-      - name: Prepare the docker installation
-        ansible.builtin.shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-        args:
-          creates: /etc/yum.repos.d/docker-ce.repo
-      - name: Clean possible previous docker version
-        ansible.builtin.yum:
-          name: 
-            - docker
-            - docker-client
-            - docker-client-latest
-            - docker-common
-            - docker-latest
-            - docker-latest-logrotate
-            - docker-logrotate
-            - docker-engine
-          state: absent
-      - name: Install docker
-        ansible.builtin.yum:
-          name:
-            - docker-ce
-            - docker-ce-cli
-            - containerd.io
-            - docker-buildx-plugin
-            - docker-compose-plugin
-          state: present
-      - name: Enable Docker
-        ansible.builtin.shell: |
-          systemctl enable docker
-          systemctl start docker
-      - name: Prepare Gitlab directory structure
+      - name: Prepare configs directory structure
         ansible.builtin.shell: |
           mkdir -p /opt/gitlab/config
           mkdir -p /opt/gitlab/logs
           mkdir -p /opt/gitlab/data
+          mkdir -p /opt/prometheus/config/
+          mkdir -p /opt/nginx/config/conf.d
       - name: Create Docker network
         ansible.builtin.shell: docker network create nginx_proxy || true
       - name: Deploy Gitlab container
@@ -80,12 +42,12 @@
           --network nginx_proxy
           -p 127.0.0.1:3000:3000
           grafana/grafana || docker start grafana
-      - name: Make Prometheus config directory
-        ansible.builtin.shell: mkdir -p /opt/prometheus/config/
       - name: Copy Prometheus config
         ansible.builtin.copy:
           src: ./configs/prometheus/prometheus.yml
           dest: /opt/prometheus/config/prometheus.yml
+          owner: docker
+          group: docker
       - name: Deploy Prometheus container
         ansible.builtin.shell: >
           docker run --detach
@@ -95,12 +57,12 @@
           -p 127.0.0.1:9090:9090
           -v /opt/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml
           prom/prometheus || docker start prometheus
-      - name: Make Nginx config directories
-        ansible.builtin.shell: mkdir -p /opt/nginx/config/conf.d
       - name: Copy Nginx config
         ansible.builtin.copy:
           src: ./configs/nginx/
           dest: /opt/nginx/config/
+          owner: docker
+          group: docker
       - name: Deploy Nginx
         ansible.builtin.shell: >
           docker run --detach

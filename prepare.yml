@@ -1,0 +1,54 @@
+---
+  - name: System prepare
+    hosts: all
+    become: yes
+    become_user: root
+    tasks:
+      - name: Test vagrant connection
+        ansible.builtin.ping:
+      - name: Upgrade system packets
+        ansible.builtin.yum:
+          name: "*"
+          state: latest
+        ansible.builtin.yum:
+          name: yum-utils
+          state: present
+      - name: Reboot the machine to apply changes
+        ansible.builtin.reboot:
+      - name: Prepare the docker installation
+        ansible.builtin.shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        args:
+          creates: /etc/yum.repos.d/docker-ce.repo
+      - name: Clean possible previous docker version
+        ansible.builtin.yum:
+          name: 
+            - docker
+            - docker-client
+            - docker-client-latest
+            - docker-common
+            - docker-latest
+            - docker-latest-logrotate
+            - docker-logrotate
+            - docker-engine
+          state: absent
+      - name: Install docker
+        ansible.builtin.yum:
+          name:
+            - docker-ce
+            - docker-ce-cli
+            - containerd.io
+            - docker-buildx-plugin
+            - docker-compose-plugin
+          state: present
+      - name: Add docker user account
+        ansible.builtin.user:
+          name: docker
+          password: "!"
+          group: docker
+      - name: Enable Docker service
+        ansible.builtin.service:
+          name: docker
+          enabled: yes
+          state: started
+      - name: Set folder owner
+        ansible.builtin.shell: chown -R docker:docker /opt
