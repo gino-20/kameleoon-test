@@ -1,0 +1,7 @@
+---
+# tasks file for kameleoon_test
+- name: Upgrade all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+  
