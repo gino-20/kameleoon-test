@@ -1,0 +1,41 @@
+---
+- hosts: localhost
+  vars:
+    helm_chart_url: "https://charts.bitnami.com/bitnami"
+    helm_gitlab_url: "https://charts.gitlab.io/"
+  tasks:
+    - name: Add Gitlab repo
+      kubernetes.core.helm_repository:
+        name: gitlab
+        repo_url: "{{ helm_gitlab_url }}"
+    - name: Add Bitnami repo
+      kubernetes.core.helm_repository:
+        name: bitnami
+        repo_url: "{{ helm_chart_url }}"
+    - name: Deploy the latest Grafana version
+      kubernetes.core.helm:
+        name: grafana
+        chart_ref: bitnami/grafana
+        release_namespace: monitoring
+        create_namespace: true
+    - name: Deploy the latest version of Prometheus
+      kubernetes.core.helm:
+        name: prometheus
+        chart_ref: bitnami/prometheus
+        release_namespace: monitoring
+        create_namespace: true
+    - name: Deploy the latest version of Gitlab
+      kubernetes.core.helm:
+        name: gitlab
+        chart_ref: gitlab/gitlab
+        release_namespace: monitoring
+        create_namespace: true
+        set_values:
+          - value: global.hosts.domain=grafana.example.com
+            value_type: string
+          - value: certmanager-issuer.email=me@example.com
+            value_type: string
+    - name: Make an Ingress deployment
+      kubernetes.core.k8s:
+        state: present
+        src: ./ingress.yml
